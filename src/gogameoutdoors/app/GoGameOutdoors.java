@@ -44,7 +44,7 @@ public class GoGameOutdoors extends Activity implements OnClickListener{
 	}
 
 	public void onClick(View v) {
-		Intent intent = new Intent(this, LocationHandle.class);
+		Intent intent = new Intent(this, TestView.class);
 		startActivity(intent);
 		// TODO Auto-generated method stub
 		
