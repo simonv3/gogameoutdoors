@@ -25,7 +25,15 @@
 		<activity android:name="GoGameMapView"
         		android:label="@string/app_name">		
         </activity>
-
+		<activity android:name="SnakeGameActivity"
+        		android:label="@string/app_name">		
+        </activity>
+		<activity android:name="MovingBallExample"
+				android:label="@string/app_name">
+		</activity>
+		<activity android:name="ChangeableTextExample"
+				android:label="@string/app_name">
+		</activity>
     </application>
     <uses-sdk android:minSdkVersion="7" />
 

@@ -12,5 +12,13 @@
   <Button android:id="@+id/start_game"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Start Single Player" />
+            android:text="Broken" />
+  <Button android:id="@+id/location_test"
+  			android:layout_width="wrap_content"
+  			android:layout_height="wrap_content"
+  			android:text="Test Location" />
+  <Button android:id="@+id/single_player"
+  			android:layout_width="wrap_content"
+  			android:layout_height="wrap_content"
+  			android:text="Single Player" />
 </LinearLayout>

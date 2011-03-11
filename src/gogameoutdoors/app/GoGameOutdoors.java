@@ -12,6 +12,8 @@ public class GoGameOutdoors extends Activity implements OnClickListener{
     /** Called when the activity is first created. */
 	private TextView output;
 	private Button button;
+	private Button buttonTestLocation;
+	private Button buttonByPassTestLocation;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -23,7 +25,12 @@ public class GoGameOutdoors extends Activity implements OnClickListener{
 		
 		button = (Button) findViewById(R.id.start_game);
 		button.setOnClickListener(this);
+		
+		buttonTestLocation = (Button) findViewById(R.id.location_test);
+		buttonTestLocation.setOnClickListener(this);
 
+		buttonByPassTestLocation = (Button) findViewById(R.id.single_player);
+		buttonByPassTestLocation.setOnClickListener(this);
     }
     
 	@Override
@@ -42,10 +49,20 @@ public class GoGameOutdoors extends Activity implements OnClickListener{
 	protected void onPause() {
 		super.onPause();
 	}
-
+ 
 	public void onClick(View v) {
-		Intent intent = new Intent(this, GoGameMapView.class);
-		startActivity(intent);
+		if (v == button){
+			Intent intent = new Intent(this, GoGameMapView.class);
+			startActivity(intent);
+			
+		} else if (v==buttonTestLocation){
+			Intent intent = new Intent(this,LocationHandle.class);
+			startActivity(intent);
+		} else if (v == buttonByPassTestLocation){
+			Intent intent = new Intent(this,ChangeableTextExample.class);
+			startActivity(intent);
+		}
+
 		// TODO Auto-generated method stub
 		
 	}

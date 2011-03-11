@@ -19,10 +19,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.android.maps.GeoPoint;
+import com.google.android.maps.MapActivity;
+import com.google.android.maps.MapController;
+import com.google.android.maps.MapView;
+import com.google.android.maps.Overlay;
+import com.google.android.maps.OverlayItem;
+
 import android.app.Activity;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.drawable.Drawable;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -33,10 +41,18 @@ import android.provider.Settings.Secure;
 import android.util.Log;
 import android.widget.TextView;
 
-public class LocationHandle extends Activity implements LocationListener {
+public class LocationHandle extends MapActivity implements LocationListener {
 	private static final String TAG = "LocationDemo";
 	private static final String[] S = { "Out of Service",
 			"Temporarily Unavailable", "Available" };
+
+	/*map stuff*/
+	MapView mapView;
+	List<Overlay> mapOverlays;
+	GoGameMapItemizedOverlay itemizedOverlay;
+	private MapController mapController;
+	private GoGameMapItemizedOverlay itemizedOverlayUser;
+	Drawable drawable;
 
 	private TextView output;
 	private LocationManager locationManager;
@@ -55,31 +71,34 @@ public class LocationHandle extends Activity implements LocationListener {
 
 		// Get the location manager
 		locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-
-		// List all providers:
-		List<String> providers = locationManager.getAllProviders();
-		for (String provider : providers) {
-			printProvider(provider);
-		}
-
-		Criteria criteria = new Criteria();
-		bestProvider = locationManager.getBestProvider(criteria, false);
-		output.append("\n\nBEST Provider:\n");
-		printProvider(bestProvider);
-
-		output.append("\n\nLocations (starting with last known):");
-		
-		
 		
 		Location location = locationManager.getLastKnownLocation("gps");
 		
 		/* database stuff */
 	    uploadOurLocation(location);
-	    /*insertOurLocation(location);*/
-	    /*Cursor cursor = getLocations();*/
-	    /*showLocations(cursor);*/
-		
+
 		printLocation(location);
+		
+		
+		/*map stuff*/
+		mapView = (MapView) findViewById(R.id.gomapviewholder);
+		mapView.setBuiltInZoomControls(true);
+		mapController = mapView.getController();
+		mapController.setZoom(16);
+		mapController.animateTo(new GeoPoint((int) (55.946*10e5),(int) (-3.166*10e5)));
+		try{
+		mapController.animateTo(new GeoPoint((int) (location.getLatitude()*10e5),(int) (location.getLongitude()*10e5)));
+		} catch(Exception e){
+			Log.e("no_gps", "Could not find location information");
+			output.append("\n\n couldn't find GPS coordinates");
+		}
+		mapOverlays = mapView.getOverlays();
+		drawable = this.getResources().getDrawable(R.drawable.dot_red);//
+		itemizedOverlay = new GoGameMapItemizedOverlay(drawable);//
+		itemizedOverlayUser = new GoGameMapItemizedOverlay(this.getResources().getDrawable(R.drawable.dot));
+		drawGridLocation(location);
+		inGameArea(location);
+		
 	}
 
 	@Override
@@ -102,28 +121,40 @@ public class LocationHandle extends Activity implements LocationListener {
 		locationManager.removeUpdates(this);
 	}
 
+	private void inGameArea(Location location){
+		output.append("\n\n");
+		try{
+			if (location.getLatitude() >= (double) 55.9451 && location.getLatitude() <= (double) 55.94657 && location.getLongitude() <= (double) -3.1650 && location.getLongitude() >= (double) -3.1672){
+				output.append("you're in the play area");
+			} else {
+				output.append("you're still not in the play area, use the map to make your way there");
+			}
+		}
+		catch(Exception e){
+			output.append("you're not in the play area, use the map to make your way there");
+		}
+	}
 	public void onLocationChanged(Location location) {
 			printLocation(location);
 			uploadOurLocation(location);
-
-
+			drawGridLocation(location);
+			inGameArea(location);
 	}
-
 	public void onProviderDisabled(String provider) {
 		// let okProvider be bestProvider
 		// re-register for updates
-		output.append("\n\nProvider Disabled: " + provider);
+		//output.append("\n\nProvider Disabled: " + provider);
 	}
 
 	public void onProviderEnabled(String provider) {
 		// is provider better than bestProvider?
 		// is yes, bestProvider = provider
-		output.append("\n\nProvider Enabled: " + provider);
+		//output.append("\n\nProvider Enabled: " + provider);
 	}
 
 	public void onStatusChanged(String provider, int status, Bundle extras) {
-		output.append("\n\nProvider Status Changed: " + provider + ", Status="
-				+ S[status] + ", Extras=" + extras);
+		//output.append("\n\nProvider Status Changed: " + provider + ", Status="
+		//		+ S[status] + ", Extras=" + extras);
 	}
 	
 	
@@ -188,11 +219,11 @@ public class LocationHandle extends Activity implements LocationListener {
 			nameValuePairs.add(new BasicNameValuePair("geo_long",Double.toString(location.getLongitude())));		 
 		} catch(Exception e){
 			Log.e("no_gps", "Could not find location information");
-			output.append("couldn't find GPS coordinates");
+			output.append("\n\n couldn't find GPS coordinates");
 		}
 		 
 		String android_id = Secure.getString(getContentResolver(), Secure.ANDROID_ID); 
-		output.append(android_id);
+		//output.append(android_id);
 		nameValuePairs.add(new BasicNameValuePair("user_id",android_id));
 
 		try{
@@ -203,7 +234,7 @@ public class LocationHandle extends Activity implements LocationListener {
 
 	        ResponseHandler<String> handler = new BasicResponseHandler();
 	        String response = httpclient.execute(httppost, handler);
-	        output.append("response: "+response);
+	        output.append("\n \n response: "+response);
             Log.d("Dev", "Response: " + response);
 	        /*HttpEntity entity = response.getEntity();
 	        InputStream inputstream = entity.getContent();*/
@@ -260,14 +291,66 @@ public class LocationHandle extends Activity implements LocationListener {
 /***printing ***/
 	private void printProvider(String provider) {
 		LocationProvider info = locationManager.getProvider(provider);
-		output.append(info.toString() + "\n\n");
+		//output.append(info.toString() + "\n\n");
 	}
 
 	private void printLocation(Location location) {
 		if (location == null)
-			output.append("\nLocation[unknown]\n\n");
+		{
+			//output.append("\nLocation[unknown]\n\n");
+		}
 		else
-			output.append("\n\n" + location.toString());
+		{
+			//output.append("\n\n" + location.toString());
+		}
+	}
+
+	@Override
+	protected boolean isRouteDisplayed() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	private void drawGridLocation(Location location){
+		GeoPoint userpoint = null;
+		//output.append("drawing grid");
+		try{
+			int lat = (int) (location.getLatitude()*10e5);
+			int lon = (int) (location.getLongitude()*10e5);
+			userpoint = new GeoPoint(lat,lon);
+			mapController.setCenter(userpoint);
+			//output.append("\n\n location lat: "+Integer.toString(lat)+"   long: "+Integer.toString(lon));
+
+			//output.append("\n\n userpoint lat: "+Integer.toString(userpoint.getLatitudeE6())+"   long: "+Integer.toString(userpoint.getLongitudeE6()));
+			itemizedOverlayUser.addOverlay(new OverlayItem(userpoint,"",""));
+			mapOverlays.add(itemizedOverlayUser);
+			//TODO process the user location
+		} catch(Exception e){
+			Log.e("no_gps", "Could not find location information");
+		}
+		GeoPoint centerpoint = new GeoPoint((int) (55.946*10e5),(int) (-3.166*10e5));
+		
+		GeoPoint bottom_left = new GeoPoint((int) (55.9455*10e5), (int)(-3.1670*10e5));
+		GeoPoint bottom_right = new GeoPoint((int) (55.9454*10e5),(int)(-3.1656*10e5));
+		GeoPoint top_left = new GeoPoint((int) (55.94655*10e5), (int)(-3.1667*10e5));
+		GeoPoint top_right= new GeoPoint((int) (55.9464*10e5), (int)(-3.1653*10e5));
+
+		
+		OverlayItem overlayitem = new OverlayItem(centerpoint, "", "");
+		OverlayItem overlayitembl = new OverlayItem(bottom_left, "", "");
+		OverlayItem overlayitembr = new OverlayItem(bottom_right, "", "");
+		OverlayItem overlayitemtl = new OverlayItem(top_left, "", "");
+		OverlayItem overlayitemtr = new OverlayItem(top_right, "", "");
+
+		itemizedOverlay.addOverlay(overlayitem);
+		itemizedOverlay.addOverlay(overlayitembl);
+		itemizedOverlay.addOverlay(overlayitembr);
+		itemizedOverlay.addOverlay(overlayitemtl);
+		itemizedOverlay.addOverlay(overlayitemtr);
+		
+		
+		mapOverlays.add(itemizedOverlay);
+		//
 	}
 
 }
