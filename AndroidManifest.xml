@@ -31,7 +31,7 @@
 		<activity android:name="MovingBallExample"
 				android:label="@string/app_name">
 		</activity>
-		<activity android:name="ChangeableTextExample"
+		<activity android:name="GoGameActivity"
 				android:label="@string/app_name">
 		</activity>
     </application>

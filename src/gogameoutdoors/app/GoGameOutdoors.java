@@ -59,7 +59,7 @@ public class GoGameOutdoors extends Activity implements OnClickListener{
 			Intent intent = new Intent(this,LocationHandle.class);
 			startActivity(intent);
 		} else if (v == buttonByPassTestLocation){
-			Intent intent = new Intent(this,ChangeableTextExample.class);
+			Intent intent = new Intent(this,GoGameActivity.class);
 			startActivity(intent);
 		}
 

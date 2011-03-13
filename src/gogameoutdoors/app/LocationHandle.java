@@ -28,6 +28,7 @@ import com.google.android.maps.OverlayItem;
 
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.drawable.Drawable;
@@ -126,8 +127,11 @@ public class LocationHandle extends MapActivity implements LocationListener {
 		try{
 			if (location.getLatitude() >= (double) 55.9451 && location.getLatitude() <= (double) 55.94657 && location.getLongitude() <= (double) -3.1650 && location.getLongitude() >= (double) -3.1672){
 				output.append("you're in the play area");
+				Intent intent = new Intent(this,GoGameActivity.class);
+				startActivity(intent);
 			} else {
 				output.append("you're still not in the play area, use the map to make your way there");
+				
 			}
 		}
 		catch(Exception e){
@@ -210,53 +214,7 @@ public class LocationHandle extends MapActivity implements LocationListener {
 	
 /*** storage ***/
 	
-	private void uploadOurLocation(Location location){
-		String result = "";
-		//the geolocation to send
-		ArrayList<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-		try{
-			nameValuePairs.add(new BasicNameValuePair("geo_lat",Double.toString(location.getLatitude())));
-			nameValuePairs.add(new BasicNameValuePair("geo_long",Double.toString(location.getLongitude())));		 
-		} catch(Exception e){
-			Log.e("no_gps", "Could not find location information");
-			output.append("\n\n couldn't find GPS coordinates");
-		}
-		 
-		String android_id = Secure.getString(getContentResolver(), Secure.ANDROID_ID); 
-		//output.append(android_id);
-		nameValuePairs.add(new BasicNameValuePair("user_id",android_id));
-
-		try{
-	        HttpClient httpclient = new DefaultHttpClient();
-	        HttpPost httppost = new HttpPost("http://simon.vansintjan.net/outdoorgaming/handleLocation.php");
-	        httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
-            Log.d("Dev", httppost.getURI().toString()); 
-
-	        ResponseHandler<String> handler = new BasicResponseHandler();
-	        String response = httpclient.execute(httppost, handler);
-	        output.append("\n \n response: "+response);
-            Log.d("Dev", "Response: " + response);
-	        /*HttpEntity entity = response.getEntity();
-	        InputStream inputstream = entity.getContent();*/
-            result = response;
-		}catch(Exception e){
-	        Log.e("log_tag", "Error in http connection "+e.toString());
-		}
-		try{
-	        JSONArray jArray = new JSONArray(result);
-	        for(int i=0;i<jArray.length();i++){
-	                JSONObject json_data = jArray.getJSONObject(i);
-	                /*Log.i("log_tag","id: "+json_data.getInt("id")+
-	                        ", name: "+json_data.getString("name")+
-	                        ", sex: "+json_data.getInt("sex")+
-	                        ", birthyear: "+json_data.getInt("birthyear")
-	                );*/
-	        }
-		}catch(JSONException e){
-	        Log.e("log_tag", "Error parsing data "+e.toString());
-		}
-		
-	}
+	
 	
 	/*
 	private void insertOurLocation(Location location){
@@ -293,7 +251,52 @@ public class LocationHandle extends MapActivity implements LocationListener {
 		LocationProvider info = locationManager.getProvider(provider);
 		//output.append(info.toString() + "\n\n");
 	}
+	public void uploadOurLocation(Location location){
+		String result = "";
+		//the geolocation to send
+		ArrayList<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+		try{
+			nameValuePairs.add(new BasicNameValuePair("geo_lat",Double.toString(location.getLatitude())));
+			nameValuePairs.add(new BasicNameValuePair("geo_long",Double.toString(location.getLongitude())));		 
+		} catch(Exception e){
+			Log.e("no_gps", "Could not find location information");
+			output.append("\n\n couldn't find GPS coordinates");
+		}
+		 
+		String android_id = Secure.getString(getContentResolver(), Secure.ANDROID_ID); 
+		nameValuePairs.add(new BasicNameValuePair("user_id",android_id));
 
+		try{
+	        HttpClient httpclient = new DefaultHttpClient();
+	        HttpPost httppost = new HttpPost("http://people.ace.ed.ac.uk/dmsp1011/outdoorgaming/handleLocation.php");
+	        httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+            Log.d("Dev", httppost.getURI().toString()); 
+
+	        ResponseHandler<String> handler = new BasicResponseHandler();
+	        String response = httpclient.execute(httppost, handler);
+	        output.append("\n \n response: "+response);
+            Log.d("Dev", "Response: " + response);
+	        /*HttpEntity entity = response.getEntity();
+	        InputStream inputstream = entity.getContent();*/
+            result = response;
+		}catch(Exception e){
+	        Log.e("log_tag", "Error in http connection "+e.toString());
+		}
+		try{
+	        JSONArray jArray = new JSONArray(result);
+	        for(int i=0;i<jArray.length();i++){
+	                JSONObject json_data = jArray.getJSONObject(i);
+	                /*Log.i("log_tag","id: "+json_data.getInt("id")+
+	                        ", name: "+json_data.getString("name")+
+	                        ", sex: "+json_data.getInt("sex")+
+	                        ", birthyear: "+json_data.getInt("birthyear")
+	                );*/
+	        }
+		}catch(JSONException e){
+	        Log.e("log_tag", "Error parsing data "+e.toString());
+		}
+		
+	}
 	private void printLocation(Location location) {
 		if (location == null)
 		{
