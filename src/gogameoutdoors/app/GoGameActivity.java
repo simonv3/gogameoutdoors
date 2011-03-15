@@ -1,8 +1,16 @@
 package gogameoutdoors.app;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Vector;
 
+import org.anddev.andengine.audio.sound.Sound;
+import org.anddev.andengine.audio.sound.SoundFactory;
 import org.anddev.andengine.engine.Engine;
 import org.anddev.andengine.engine.camera.Camera;
 import org.anddev.andengine.engine.handler.timer.ITimerCallback;
@@ -17,6 +25,7 @@ import org.anddev.andengine.entity.util.FPSCounter;
 import org.anddev.andengine.opengl.font.Font;
 import org.anddev.andengine.opengl.texture.Texture;
 import org.anddev.andengine.opengl.texture.TextureOptions;
+import org.anddev.andengine.util.Debug;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
@@ -35,8 +44,11 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.Settings.Secure;
 import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
 
 /**
  * @author Nicolas Gramlich
@@ -60,7 +72,12 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 	private double curlat;
 	private double curlng;
 	private LocationManager locationManager;
-	private Vector<String> otherPlayers;
+	private HashMap<String,Map<String,Double>> otherPlayers = new HashMap<String, Map<String,Double>>();
+	private Sound mInSquare1Sound;
+	private long timer = 0;
+	protected long initialTime = System.currentTimeMillis();
+	private Sound mInSquare2Sound;
+
 
 
 	// ===========================================================
@@ -78,7 +95,7 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 	public Engine onLoadEngine() {
 
 		this.mCamera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
-		return new Engine(new EngineOptions(true, ScreenOrientation.LANDSCAPE, new RatioResolutionPolicy(CAMERA_WIDTH, CAMERA_HEIGHT), this.mCamera));
+		return new Engine(new EngineOptions(true, ScreenOrientation.LANDSCAPE, new RatioResolutionPolicy(CAMERA_WIDTH, CAMERA_HEIGHT), this.mCamera).setNeedsSound(true));
 	}
 
 	public void onLoadResources() {
@@ -89,12 +106,24 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 
 		this.mEngine.getTextureManager().loadTexture(this.mFontTexture);
 		this.mEngine.getFontManager().loadFont(this.mFont);
+		try {
+			SoundFactory.setAssetBasePath("mfx/");
+			this.mInSquare1Sound = SoundFactory.createSoundFromAsset(this.getSoundManager(), this, "daft_punk_fall.ogg");
+			this.mInSquare2Sound = SoundFactory.createSoundFromAsset(this.getSoundManager(), this, "all_of_the_lights.ogg");
+
+		} catch (final IOException e) {
+			Log.e("import_sound", e.toString());
+		}
 	}
 
 	public Scene onLoadScene() {
+		final Handler mHandler = new Handler();
+
 		locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-		Location location = locationManager.getLastKnownLocation("gps");
+		Location location = locationManager.getLastKnownLocation("gps");		
+		uploadOurLocation(location);
+
 		try{
 			this.curlat = location.getLatitude();
 			this.curlng = location.getLongitude();
@@ -102,24 +131,57 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 		} catch (Exception e){
 			Log.e("dev", "didn't get location onLoadScene");
 		}
-		uploadOurLocation(location);
 
-		
 		final FPSCounter fpsCounter = new FPSCounter();
 		this.mEngine.registerUpdateHandler(fpsCounter);
 
 		final Scene scene = new Scene(1);
 		scene.setBackground(new ColorBackground(0.26667f, 0.26275f, 0.26275f));
-		final ChangeableText elapsedText = new ChangeableText(20, 20, this.mFont, "Yr Location:", "Yr Location: XXXXX".length());
-		final ChangeableText elapsedText2 = new ChangeableText(20, 40, this.mFont, "Othr Location:", "Othr Location: XXXXX".length());
+		final ChangeableText yrlocation = new ChangeableText(20, 20, this.mFont, "Yr Location:", "Yr Location: 00.0000,00.0000".length());
+		final Vector<ChangeableText> othertexts= new Vector<ChangeableText>();
+        final ChangeableText fpsText = new ChangeableText(20, 40, this.mFont, "FPS:", "FPS: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".length());
+        final ChangeableText fpsTimer = new ChangeableText(20, 80, this.mFont, "FPS:", "Timer: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".length());
+        final ChangeableText fpsInitialTime = new ChangeableText(20, 60, this.mFont, "FPS:", "Timer: XXXXXXXXXXXXXXXXXXXXXXXXXXX".length());
 
-		scene.getLastChild().attachChild(elapsedText);
-		scene.getLastChild().attachChild(elapsedText2);
-
+		scene.getLastChild().attachChild(yrlocation);
+		scene.getLastChild().attachChild(fpsText);
+		scene.getLastChild().attachChild(fpsInitialTime);
+		scene.getLastChild().attachChild(fpsTimer);
 		scene.registerUpdateHandler(new TimerHandler(1 / 20.0f, true, new ITimerCallback() {
 			public void onTimePassed(final TimerHandler pTimerHandler) {
-				elapsedText.setText("Yr Location: " + curlat + ", " + curlng);
-				elapsedText2.setText("Othr Location: " + fpsCounter.getFPS());
+				ArrayList<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+				long var = System.currentTimeMillis();
+				//getOthersLocation(nameValuePairs);
+				int height = 100;
+				for (int x = 0; x< otherPlayers.size(); x++){
+					othertexts.add(new ChangeableText(20,height,mFont, "Othr Location:", "Othr Location: 00.0000,00.0000".length()));
+					height+=20;
+					scene.getLastChild().attachChild(othertexts.get(x));
+				}
+            	fpsText.setText("FPS: " + System.currentTimeMillis());
+				fpsTimer.setText("Timer: " + timer);
+				fpsInitialTime.setText("Timer: " + initialTime );
+
+				yrlocation.setText("Yr Location: " + Double.toString(curlat).substring(0, Math.min(Double.toString(curlat).length(), 7)) + ", " + Double.toString(curlng).substring(0, Math.min(Double.toString(curlng).length(), 7)));
+				Iterator<Map<String, Double>> player_values = otherPlayers.values().iterator();
+				Log.e("size", Integer.toString(otherPlayers.size()));
+				for (int x = 0; x< otherPlayers.size();x++){
+					
+					if (player_values.hasNext()){
+						Map<String, Double> next_value = player_values.next();
+						Log.e("log_tag", next_value.toString());
+						if (othertexts.size() != 0){
+							othertexts.get(x).setText("Othr Location: " + next_value.get("geolat").toString().substring(0, Math.min(next_value.get("geolat").toString().length(), 7)) +","+ next_value.get("geolong").toString().substring(0, Math.min(next_value.get("geolat").toString().length(), 7)));
+							//Log.e("log_tag", "here it isn't though");
+					        Log.e("log_tag", next_value.get("geolat").toString());
+
+						} else {
+							Log.e("log_tag", "the array is size 0");
+						}
+					}
+				}
+
+					playCorrectSound(curlat, curlng);
 			}
 		}));
 
@@ -134,7 +196,7 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 		Log.e("dev", "does it ever reach this");
 		this.curlat = location.getLatitude();
 		this.curlng = location.getLongitude();	
-		uploadOurLocation(location);
+		//uploadOurLocation(location);
 	}
 
 	public void onProviderDisabled(String arg0) {
@@ -155,20 +217,24 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 	// ===========================================================
 	// Methods
 	// ===========================================================
-	public void uploadOurLocation(Location location){
-		String result = "";
-		//the geolocation to send
-		ArrayList<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-		try{
-			nameValuePairs.add(new BasicNameValuePair("geo_lat",Double.toString(location.getLatitude())));
-			nameValuePairs.add(new BasicNameValuePair("geo_long",Double.toString(location.getLongitude())));	 
-		} catch(Exception e){
-			Log.e("no_gps", "Could not find location information");
+	
+	public void playCorrectSound(double lat, double lng){
+		long currentTime = System.currentTimeMillis();
+		if(timer == 0){
+			this.mInSquare1Sound.play();
+			timer = currentTime;
+		} else if (timer + 5000 < currentTime){//temporary note: know its 5700
+			this.mInSquare2Sound.play();
+			this.mInSquare1Sound.play();
+			timer = currentTime;
+			
 		}
-		 
-		String android_id = Secure.getString(getContentResolver(), Secure.ANDROID_ID); 
-		nameValuePairs.add(new BasicNameValuePair("user_id",android_id));
 
+	}
+	
+	public void getOthersLocation(ArrayList<NameValuePair> nameValuePairs){
+		Log.e("logger", "getting locations");
+		String result = "";
 		try{
 	        HttpClient httpclient = new DefaultHttpClient();
 	        String url = "http://people.ace.ed.ac.uk/dmsp1011/outdoorgaming/handleLocation.php";
@@ -192,24 +258,40 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 	                JSONArray jsonUserArray = json_data.getJSONArray("users");
 	                for (int x = 0; x < jsonUserArray.length(); x++){
 	                	JSONObject user_data = jsonUserArray.getJSONObject(x);
-	                	Log.e("log_tag", user_data.toString());
 	                	JSONObject user = user_data.getJSONArray("user").getJSONObject(0);
-	                	Log.e("log_tag", user.toString());
-	                	Log.e("log_tag", user.getString("id"));
-	                	JSONArray user_location = user.getJSONArray("location");
+
+	                	JSONObject user_location = user.getJSONArray("location").getJSONObject(0);
 	                	
-	                	Log.e("log_tag", user_location.getJSONObject(0).getString("geolat").toString());
+	                	HashMap<String, Double> locationMap = new HashMap<String, Double>(); 
+	                	locationMap.put("geolat", user_location.getDouble("geolat"));
+	                	locationMap.put("geolong", user_location.getDouble("geolong"));// user_location.getString("geolat"));
+	                	
+		                otherPlayers.put(user.getString("id"), locationMap);
+
 	                	
 	                }
-	                /*Log.i("log_tag","id: "+json_data.getInt("id")+
-	                        ", name: "+json_data.getString("name")+
-	                        ", sex: "+json_data.getInt("sex")+
-	                        ", birthyear: "+json_data.getInt("birthyear")
-	                );*/
 	        }
+	        Log.e("log_tag", otherPlayers.toString());
 		}catch(JSONException e){
 	        Log.e("log_tag", "Error parsing data "+e.toString());
 		}
+	}
+	public void uploadOurLocation(Location location){
+		String result = "";
+		//the geolocation to send
+		ArrayList<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+		try{
+			nameValuePairs.add(new BasicNameValuePair("geo_lat",Double.toString(location.getLatitude())));
+			nameValuePairs.add(new BasicNameValuePair("geo_long",Double.toString(location.getLongitude())));	 
+		} catch(Exception e){
+			Log.e("no_gps", "Could not find location information");
+		}
+		 
+		String android_id = Secure.getString(getContentResolver(), Secure.ANDROID_ID); 
+		nameValuePairs.add(new BasicNameValuePair("user_id",android_id));
+		
+		getOthersLocation(nameValuePairs);
+		
 		
 	}
 	// ===========================================================
