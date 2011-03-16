@@ -1,24 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:orientation="vertical" android:layout_width="fill_parent"
-  android:layout_height="fill_parent">
-
+  android:layout_height="fill_parent"
+  android:background="@drawable/mainmenuscreen_background"
+  >
   <ScrollView android:layout_width="wrap_content"
     android:layout_height="wrap_content">
     <TextView android:id="@+id/output" android:layout_width="fill_parent"
       android:layout_height="wrap_content" />
 
   </ScrollView>
-  <Button android:id="@+id/start_game"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Broken" />
+  <LinearLayout android:layout_height="wrap_content" 
+  			android:layout_width="fill_parent" android:orientation="vertical" 
+  			    			android:layout_marginTop="180sp"
+  			
+  >
+  
   <Button android:id="@+id/location_test"
+    			    			android:layout_gravity="center_horizontal"
+  
   			android:layout_width="wrap_content"
   			android:layout_height="wrap_content"
-  			android:text="Test Location" />
+  			android:background="@drawable/android_button_start_game" />
   <Button android:id="@+id/single_player"
+      			    			android:layout_gravity="center_horizontal"
+  
   			android:layout_width="wrap_content"
   			android:layout_height="wrap_content"
   			android:text="Single Player" />
-</LinearLayout>
+  <Button android:id="@+id/single_player"
+      			    			android:layout_gravity="center_horizontal"
+  
+  			android:layout_width="wrap_content"
+  			android:layout_height="wrap_content"
+  			android:background="@drawable/android_button_start_game"
+  			android:text="" />
+ 	</LinearLayout>
+</RelativeLayout>

@@ -20,11 +20,14 @@ import org.anddev.andengine.engine.options.EngineOptions.ScreenOrientation;
 import org.anddev.andengine.engine.options.resolutionpolicy.RatioResolutionPolicy;
 import org.anddev.andengine.entity.scene.Scene;
 import org.anddev.andengine.entity.scene.background.ColorBackground;
+import org.anddev.andengine.entity.sprite.Sprite;
 import org.anddev.andengine.entity.text.ChangeableText;
 import org.anddev.andengine.entity.util.FPSCounter;
 import org.anddev.andengine.opengl.font.Font;
 import org.anddev.andengine.opengl.texture.Texture;
 import org.anddev.andengine.opengl.texture.TextureOptions;
+import org.anddev.andengine.opengl.texture.region.TextureRegion;
+import org.anddev.andengine.opengl.texture.region.TextureRegionFactory;
 import org.anddev.andengine.util.Debug;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -49,6 +52,7 @@ import android.provider.Settings.Secure;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.Window;
 
 /**
  * @author Nicolas Gramlich
@@ -59,13 +63,12 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 	// Constants
 	// ===========================================================
 
-	private static final int CAMERA_WIDTH = 720;
-	private static final int CAMERA_HEIGHT = 480;
+	private static final int CAMERA_WIDTH = 240;
+	private static final int CAMERA_HEIGHT = 400;
 
 	// ===========================================================
 	// Fields
 	// ===========================================================
-
 	private Camera mCamera;
 	private Texture mFontTexture;
 	private Font mFont;
@@ -74,10 +77,13 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 	private LocationManager locationManager;
 	private HashMap<String,Map<String,Double>> otherPlayers = new HashMap<String, Map<String,Double>>();
 	private Sound mInSquare1Sound;
-	private long timer = 0;
-	protected long initialTime = System.currentTimeMillis();
 	private Sound mInSquare2Sound;
 
+	private long timer = 0;
+	protected long initialTime = System.currentTimeMillis();
+	
+	private Texture mBackgroundTexture;
+	private TextureRegion mBackgroundTextureRegion;
 
 
 	// ===========================================================
@@ -93,6 +99,7 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 	// ===========================================================
 
 	public Engine onLoadEngine() {
+		this.requestWindowFeature(Window.FEATURE_PROGRESS);
 
 		this.mCamera = new Camera(0, 0, CAMERA_WIDTH, CAMERA_HEIGHT);
 		return new Engine(new EngineOptions(true, ScreenOrientation.LANDSCAPE, new RatioResolutionPolicy(CAMERA_WIDTH, CAMERA_HEIGHT), this.mCamera).setNeedsSound(true));
@@ -106,6 +113,12 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 
 		this.mEngine.getTextureManager().loadTexture(this.mFontTexture);
 		this.mEngine.getFontManager().loadFont(this.mFont);
+		
+		TextureRegionFactory.setAssetBasePath("gfx/");
+		this.mBackgroundTexture = new Texture(1024, 512, TextureOptions.DEFAULT);
+		this.mBackgroundTextureRegion = TextureRegionFactory.createFromAsset(this.mBackgroundTexture, this, "gridbackgroundscreen.png", 0, 0);
+		this.mEngine.getTextureManager().loadTextures(this.mBackgroundTexture);
+
 		try {
 			SoundFactory.setAssetBasePath("mfx/");
 			this.mInSquare1Sound = SoundFactory.createSoundFromAsset(this.getSoundManager(), this, "daft_punk_fall.ogg");
@@ -124,19 +137,23 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 		Location location = locationManager.getLastKnownLocation("gps");		
 		uploadOurLocation(location);
 
+
 		try{
 			this.curlat = location.getLatitude();
 			this.curlng = location.getLongitude();
-			Log.e("dev", "got location onLoadScene");
+			//Log.e("dev", "got location onLoadScene");
 		} catch (Exception e){
-			Log.e("dev", "didn't get location onLoadScene");
+			//Log.e("dev", "didn't get location onLoadScene");
 		}
 
 		final FPSCounter fpsCounter = new FPSCounter();
 		this.mEngine.registerUpdateHandler(fpsCounter);
 
 		final Scene scene = new Scene(1);
-		scene.setBackground(new ColorBackground(0.26667f, 0.26275f, 0.26275f));
+
+		scene.setBackgroundEnabled(false);
+		scene.getChild(0).attachChild(new Sprite(0, 0, this.mBackgroundTextureRegion));//potentially in getChild(4);
+		//scene.setBackground(new ColorBackground(0.26667f, 0.26275f, 0.26275f));
 		final ChangeableText yrlocation = new ChangeableText(20, 20, this.mFont, "Yr Location:", "Yr Location: 00.0000,00.0000".length());
 		final Vector<ChangeableText> othertexts= new Vector<ChangeableText>();
         final ChangeableText fpsText = new ChangeableText(20, 40, this.mFont, "FPS:", "FPS: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".length());
@@ -163,20 +180,24 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 				fpsInitialTime.setText("Timer: " + initialTime );
 
 				yrlocation.setText("Yr Location: " + Double.toString(curlat).substring(0, Math.min(Double.toString(curlat).length(), 7)) + ", " + Double.toString(curlng).substring(0, Math.min(Double.toString(curlng).length(), 7)));
+				//Log.e("other_players",otherPlayers.toString());
+				String android_id = Secure.getString(getContentResolver(), Secure.ANDROID_ID); 
+
+				otherPlayers.remove(android_id);
 				Iterator<Map<String, Double>> player_values = otherPlayers.values().iterator();
-				Log.e("size", Integer.toString(otherPlayers.size()));
+				//Log.e("size", Integer.toString(otherPlayers.size()));
 				for (int x = 0; x< otherPlayers.size();x++){
 					
 					if (player_values.hasNext()){
 						Map<String, Double> next_value = player_values.next();
-						Log.e("log_tag", next_value.toString());
+						//	Log.e("log_tag", next_value.toString());
 						if (othertexts.size() != 0){
 							othertexts.get(x).setText("Othr Location: " + next_value.get("geolat").toString().substring(0, Math.min(next_value.get("geolat").toString().length(), 7)) +","+ next_value.get("geolong").toString().substring(0, Math.min(next_value.get("geolat").toString().length(), 7)));
 							//Log.e("log_tag", "here it isn't though");
-					        Log.e("log_tag", next_value.get("geolat").toString());
+					        //Log.e("log_tag", next_value.get("geolat").toString());
 
 						} else {
-							Log.e("log_tag", "the array is size 0");
+							//Log.e("log_tag", "the array is size 0");
 						}
 					}
 				}
@@ -223,7 +244,7 @@ public class GoGameActivity extends BaseExample implements LocationListener{
 		if(timer == 0){
 			this.mInSquare1Sound.play();
 			timer = currentTime;
-		} else if (timer + 5000 < currentTime){//temporary note: know its 5700
+		} else if (timer + 5000 < currentTime){//temporary note: know it's 5700
 			this.mInSquare2Sound.play();
 			this.mInSquare1Sound.play();
 			timer = currentTime;

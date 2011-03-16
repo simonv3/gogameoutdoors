@@ -14,17 +14,11 @@ public class GoGameOutdoors extends Activity implements OnClickListener{
 	private Button button;
 	private Button buttonTestLocation;
 	private Button buttonByPassTestLocation;
-
+ 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        
-		output = (TextView) findViewById(R.id.output);
-		output.append("main view");
-		
-		button = (Button) findViewById(R.id.start_game);
-		button.setOnClickListener(this);
 		
 		buttonTestLocation = (Button) findViewById(R.id.location_test);
 		buttonTestLocation.setOnClickListener(this);
